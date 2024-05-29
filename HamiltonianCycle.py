@@ -21,5 +21,5 @@ def HamiltonianCycle(graph, nb_nodes, start):
     if cost < min_cost:
       min_cost = cost
       min_path =(start,) + permutation
-  return min_path
+  return min_path,min_cost
 

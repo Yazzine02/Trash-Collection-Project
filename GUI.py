@@ -2,17 +2,18 @@ import os
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
-from HamiltonianCycle import HamiltonianCycle
-from GraphRepresentation import create_graph_representation_in_window
-from BruteForcing_TSP import FloydWarshall_BruteForce
+from HamiltonianCycle import HamiltonianCycle  # Assuming this is a custom module
+from GraphRepresentation import create_graph_representation_in_window  # Assuming this is a custom module
+from BruteForcing_TSP import FloydWarshall_BruteForce  # Assuming this is a custom module
+import folium
+import webbrowser
 
 infinity = 99999
-
 
 class TrashCollectionApp_GUI(tk.Tk):
     def __init__(self):
         super().__init__()
-
+        self.configure(bg="#a2bffe")
         self.title("Trash Collection App")
         self.geometry("1000x800")
 
@@ -52,11 +53,21 @@ class TrashCollectionApp_GUI(tk.Tk):
         algorithm_dropdown.grid(row=19, column=1, padx=10, pady=5)
         algorithm_dropdown.bind("<<ComboboxSelected>>", self.update_options)
 
-
         # Run button
         run_button = tk.Button(self, text="Run", command=self.run_algorithm_and_display_graph)
         run_button.grid(row=20, column=0, columnspan=3, padx=10, pady=5)
 
+        # Centering widgets
+        self.center_widgets()
+
+    def center_widgets(self):
+        # Center the Run button
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_columnconfigure(2, weight=1)
+
+        # Center the map image label
+        self.map_image_label.grid(sticky="nsew")
 
     def update_image(self):
         folder_path = "map_images"  # Folder containing the images
@@ -70,7 +81,7 @@ class TrashCollectionApp_GUI(tk.Tk):
             image_filename = "Agdal_Secteur2.jpg"
 
         image_path = os.path.join(folder_path, image_filename)
-        map_image_pil = Image.open(image_path).resize((600, 400))
+        map_image_pil = Image.open(image_path).resize((1000, 400))
 
         map_image_tk = ImageTk.PhotoImage(map_image_pil)
         self.map_image_label.config(image=map_image_tk)
@@ -102,14 +113,14 @@ class TrashCollectionApp_GUI(tk.Tk):
             # Options of custom map (hidden when not selected)
             vlist = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
             self.number_of_bins_label = tk.Label(self, text="Number of bins:")
-            self.number_of_bins_label.grid(row=3, column=0, padx=10, pady=5, sticky="w")
+            self.number_of_bins_label.grid(row=3, column=0, padx=5, pady=5, sticky="w")
 
             self.number_of_bins_var = tk.StringVar(value="Pick an Option")
             self.number_of_bins_entry = ttk.Combobox(self, textvariable=self.number_of_bins_var, values=vlist)
-            self.number_of_bins_entry.grid(row=3, column=1, padx=10, pady=5)
+            self.number_of_bins_entry.grid(row=3, column=1, padx=5, pady=5)
             self.number_of_bins_entry.bind("<<ComboboxSelected>>", self.validate_number_of_bins)
 
-            self.distance_matrix_label = tk.Label(self, text="Distance matrix: (put infinity for unreachable nodes)")
+            self.distance_matrix_label = tk.Label(self, text="Distance matrix:")
             self.distance_matrix_label.grid(row=4, column=0, padx=10, pady=5, columnspan=2, sticky="w")
         else:
             self.number_of_bins_label.grid_forget()
@@ -124,7 +135,7 @@ class TrashCollectionApp_GUI(tk.Tk):
                 value = entry.get()
                 if value.isdigit():
                     graph_row.append(int(value))
-                elif value=="inf":
+                elif value == "inf":
                     graph_row.append(infinity)
                 else:
                     print("Invalid input")
@@ -133,26 +144,69 @@ class TrashCollectionApp_GUI(tk.Tk):
         algorithm = self.selected_algorithm.get()
         print("Algorithm selected: ", algorithm)
         if algorithm == "Hamiltonian Cycle":
-            path=HamiltonianCycle(graph,len(graph),0)
+            path,cost = HamiltonianCycle(graph, len(graph), 0)
         elif algorithm == "Brute force":
-            path=FloydWarshall_BruteForce(graph,len(graph))
+            path,cost = FloydWarshall_BruteForce(graph, len(graph))
 
         if not path:
             print("No path found")
             return
         print("Path found")
-        print("Path: ",path)
+        print("Path: ", path)
+        print("Cost: ", cost)
+
         # Open a new window to display the graph
         graph_window = tk.Toplevel(self)
         graph_window.title("Algorithm Representation")
 
         # Call the function to create the graph representation in the new window
-        create_graph_representation_in_window(graph, path, "Hamiltonian cycle", graph_window)
+        create_graph_representation_in_window(graph, path, algorithm, graph_window)
 
-    def run_algorithm(self):
-        self.run_algorithm_and_display_graph()
+        # Generate and display the map
+        self.generate_map(path)
+        
+        self.quit()
 
+    def generate_map(self, path):
+        # Assume we have coordinates for each trash bin
+        coordinates = [
+            [33.9716, -6.8498],  # Example coordinates (latitude, longitude)
+            [33.9731, -6.8471],
+            [33.9751, -6.8512],
+            # Add more coordinates corresponding to the bins
+        ]
+
+        # Create a map centered at the first bin
+        map_center = coordinates[0]
+        m = folium.Map(location=map_center, zoom_start=15)
+
+        # Add markers for each bin
+        for idx in range(len(coordinates)):
+            folium.Marker(location=coordinates[idx], popup=f'Bin {idx+1}').add_to(m)
+
+        # Add the path
+        path_coords = [coordinates[i] for i in path]
+        folium.PolyLine(path_coords, color="blue", weight=2.5, opacity=1).add_to(m)
+
+        # Save the map to an HTML file
+        map_filename = "trash_bins_map.html"
+        m.save(map_filename)
+
+        # Open the map in a web browser
+        webbrowser.open('file://' + os.path.realpath(map_filename))
+
+def center_window(window):
+    window.update_idletasks()
+    width = window.winfo_width()
+    height = window.winfo_height()
+    screen_width = window.winfo_screenwidth()
+    screen_height = window.winfo_screenheight()
+    x = (screen_width - width) // 2
+    y = (screen_height - height) // 2
+    window.geometry('{}x{}+{}+{}'.format(width, height, x, y))
 
 if __name__ == "__main__":
     app = TrashCollectionApp_GUI()
+    center_window(app)  # Center the window
     app.mainloop()
+
