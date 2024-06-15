@@ -4,22 +4,17 @@ infinity = 99999
 
 
 def HamiltonianCycle(graph, nb_nodes, start):
-  nodes = []
-  for i in range(nb_nodes):
-    if i != start:
-      nodes.append(i)
-  all_combinations = itertools.permutations(nodes)
-  min_cost = infinity
-  min_path = ()
-  for permutation in all_combinations:
-    k = start
-    cost = 0
-    for node in permutation:
-      cost += graph[k][node]
-      k = node
-    cost += graph[k][start]
-    if cost < min_cost:
-      min_cost = cost
-      min_path =(start,) + permutation
-  return min_path,min_cost
-
+    nodes = list(range(nb_nodes))
+    all_permutations = itertools.permutations(nodes)
+    min_cost = infinity
+    min_path = tuple()
+    for permutation in all_permutations:
+        cost = 0
+        for i in range(nb_nodes-1):
+            node = permutation[i]
+            next_node = permutation[(i + 1)]  # Wrap around to the start if at the end
+            cost += graph[node][next_node]
+        if cost < min_cost:
+            min_cost = cost
+            min_path = permutation
+    return min_path, min_cost
