@@ -26,9 +26,9 @@ def BruteForce(nb_nodes,graph):
         if cost<final_cost:
             final_cost=cost
             final_path=combination
-    return final_path
+    return final_path,final_cost
 
 def FloydWarshall_BruteForce(graph,nb_nodes):
     distance_matrix=FloydWarshall(nb_nodes,graph)
-    path=BruteForce(nb_nodes,distance_matrix)
-    return path
+    path,cost=BruteForce(nb_nodes,distance_matrix)
+    return path,cost
